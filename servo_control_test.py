@@ -5,9 +5,9 @@ import time
 # Configuration
 SERVO_PIN = 18  # GPIO pin connected to the servo's signal wire (change if needed)
 FREQUENCY = 50  # PWM frequency in Hz (standard for most servos)
-CENTER_ANGLE = 0  # Starting and center position (user-defined angle)
-MIN_ANGLE = -30  # Minimum allowed angle (degrees)
-MAX_ANGLE = 30   # Maximum allowed angle (degrees)
+CENTER_ANGLE = -90  # Starting and center position (user-defined angle)
+MIN_ANGLE = CENTER_ANGLE-45  # Minimum allowed angle (degrees)
+MAX_ANGLE = CENTER_ANGLE+45  # Maximum allowed angle (degrees)
 STEP_DELAY = 0.02  # Delay between angle steps for slow movement (seconds)
 STEP_SIZE = 1  # Angle increment per step for smooth motion
 
@@ -67,3 +67,4 @@ finally:
     pwm.stop()
     GPIO.cleanup()
     print("GPIO cleaned up.")
+
