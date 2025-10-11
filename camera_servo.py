@@ -157,6 +157,9 @@ try:
         elif key == ord('d'):
             current_angle = turn_right(current_angle)
             print(f"Current angle: {current_angle}°")
+        elif key == ord('w'):
+            current_angle = turn_center()
+            print(f"Current angle: {current_angle}°")
 
 except KeyboardInterrupt:
     print("Program stopped by Ctrl+C.")
