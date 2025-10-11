@@ -1,30 +1,28 @@
-import cv2
-import mediapipe as mp
 import RPi.GPIO as GPIO
 import time
+import cv2
+import mediapipe as mp
 
 # Configuration
 SERVO_PIN = 18  # GPIO pin connected to the servo's signal wire
 FREQUENCY = 50  # PWM frequency in Hz
 CENTER_ANGLE = -90  # Starting and center position (user-defined angle)
 MIN_ANGLE = CENTER_ANGLE - 45  # Minimum allowed angle (degrees)
-MAX_ANGLE = CENTER_ANGLE + 60  # Maximum allowed angle (degrees)
+MAX_ANGLE = CENTER_ANGLE + 70  # Maximum allowed angle (degrees)
 STEP_DELAY = 0.02  # Delay between angle steps for slow movement (seconds)
 STEP_SIZE = 10  # Angle increment per step for smooth motion
-
 
 # Initialize servo
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(SERVO_PIN, GPIO.OUT)
 pwm = GPIO.PWM(SERVO_PIN, FREQUENCY)
+pwm.start(0)  # Start once here, with 0 duty (inactive)
 
-
-# Servo duty cycle calculation
+# Servo duty cycle calculation (restored original formula)
 def calculate_duty_cycle(user_angle):
-    servo_angle = 90 + user_angle  # Map user angle (-30 to 30) to servo angle (60 to 120)
-    duty = 5 + (servo_angle / 36)  # Formula for duty cycle
+    servo_angle = 90 + user_angle  # Map user angle to servo angle
+    duty = 5 + (servo_angle / 36)  # Original formula
     return duty
-
 # Function to set the servo angle with bounds checking
 def set_angle(pwm, angle):
     if angle < MIN_ANGLE:
@@ -38,49 +36,53 @@ def set_angle(pwm, angle):
     pwm.ChangeDutyCycle(duty)
     return angle
 
-def turn_left(ang):
+def turn_left(current_angle):
     print('turning to the TV')
-    duty = calculate_duty_cycle(ang)
-    # Slowly move to MIN_ANGLE
-    pwm.start(duty)  # Start PWM with 0 duty cycle
-
     # Always start at the center position
     print(f"Initializing servo to center position: {CENTER_ANGLE}°")
     set_angle(pwm, CENTER_ANGLE)
     time.sleep(1)  # Give time for servo to reach position
-    # Test loop: slowly oscillate back and forth between MIN_ANGLE and MAX_ANGLE
+    
+    # Slowly move to MIN_ANGLE
     current_angle = CENTER_ANGLE
-    for target in range(current_angle - STEP_SIZE, MIN_ANGLE - 1, -STEP_SIZE):
-        set_angle(pwm, target)
-        print('target: ',target)
+    while current_angle > MIN_ANGLE:
+        current_angle -= STEP_SIZE
+        if current_angle < MIN_ANGLE:
+            current_angle = MIN_ANGLE
+        set_angle(pwm, current_angle)
+        print('target: ', current_angle)
         time.sleep(STEP_DELAY)
-    current_angle = MIN_ANGLE
-    pwm.stop()
+    
+    pwm.ChangeDutyCycle(0)  # "Stop" signal without pwm.stop()
     return current_angle
     
-def turn_right(ang):
+def turn_right(current_angle):
     print('turning to the backyard')
-    duty = calculate_duty_cycle(ang)
-    pwm.start(duty)  # Start PWM with 0 duty cycle
     # Always start at the center position
     print(f"Initializing servo to center position: {CENTER_ANGLE}°")
     set_angle(pwm, CENTER_ANGLE)
     time.sleep(1)  # Give time for servo to reach position
 
-    # Test loop: slowly oscillate back and forth between MIN_ANGLE and MAX_ANGLE
+    # Slowly move to MAX_ANGLE
     current_angle = CENTER_ANGLE
-    for target in range(current_angle + STEP_SIZE, MAX_ANGLE + 1, STEP_SIZE):
-        set_angle(pwm, target)
-        print('target: ',target)
+    while current_angle < MAX_ANGLE:
+        current_angle += STEP_SIZE
+        if current_angle > MAX_ANGLE:
+            current_angle = MAX_ANGLE
+        set_angle(pwm, current_angle)
+        print('target: ', current_angle)
         time.sleep(STEP_DELAY)
-    current_angle = MAX_ANGLE
-    pwm.stop()
-    #turn off pin
+    
+    pwm.ChangeDutyCycle(0)  # "Stop" signal without pwm.stop()
     return current_angle
     
 
 def turn_center():
     print('turning to the middle')
+    set_angle(pwm, CENTER_ANGLE)
+    time.sleep(1)  # Give time for servo to reach position
+    pwm.ChangeDutyCycle(0)  # "Stop" signal without pwm.stop()
+
 # Initialize video capture
 cap = cv2.VideoCapture(0)
 if not cap.isOpened():
@@ -118,16 +120,12 @@ h1 = int(0.33 * height)
 cv2.namedWindow("Pose", cv2.WINDOW_NORMAL)
 
 try:
-    pwm.start(0)  # Start PWM with 0 duty cycle
-
     # Always start at the center position
     print(f"Initializing servo to center position: {CENTER_ANGLE}°")
     current_angle = set_angle(pwm, CENTER_ANGLE)
     time.sleep(1)  # Give time for servo to reach position
+    pwm.ChangeDutyCycle(0)  # "Stop" initially
 
-    # Test loop: slowly oscillate back and forth between MIN_ANGLE and MAX_ANGLE
-    #current_angle = CENTER_ANGLE
-    pwm.stop()
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -163,7 +161,8 @@ try:
 except KeyboardInterrupt:
     print("Program stopped by Ctrl+C.")
 finally:
-    
+    pwm.ChangeDutyCycle(0)
+    pwm.stop()  # Safe to stop here at full cleanup
     GPIO.cleanup()
     cap.release()
     cv2.destroyAllWindows()
