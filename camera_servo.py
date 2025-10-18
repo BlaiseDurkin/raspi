@@ -115,9 +115,26 @@ print(f"Window Width: {width}")
 # Calculate h1 as 33% of the height
 h1 = int(0.33 * height)
 """
-
+# Mouse callback function
+def draw_line(event, x, y, flags, param):
+    print('draw line called')
+    global x_coord
+    if event == cv2.EVENT_LBUTTONUP:  # Left mouse click
+        print('clicked')
+        frame[:] = 0  # Clear the image
+        cv2.line(frame, (x, 0), (x, frame.shape[0]), (0, 255, 0), 1)  # Draw vertical line
+        x_coord = x  # Store x-coordinate
+        print(f"X-coordinate: {x_coord}")  # Print x-coordinate
+        
+        
+def get_info(frame):
+    height, width, _ = frame.shape
+    print(f"Window Height: {height}")
+    print(f"Window Width: {width}")
+    
 # Create OpenCV window
 cv2.namedWindow("Pose", cv2.WINDOW_NORMAL)
+
 
 try:
     # Always start at the center position
@@ -131,7 +148,8 @@ try:
         if not ret:
             print("Failed to grab frame")
             break
-
+        cv2.setMouseCallback("Pose", draw_line)
+        
         # Convert frame to RGB for MediaPipe
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = pose.process(rgb)
@@ -160,6 +178,9 @@ try:
         elif key == ord('w'):
             current_angle = turn_center()
             print(f"Current angle: {current_angle}°")
+        elif key == ord('i'):
+            print('info')
+            get_info(frame)
 
 except KeyboardInterrupt:
     print("Program stopped by Ctrl+C.")
